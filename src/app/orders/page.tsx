@@ -16,8 +16,10 @@ import {
   XCircle,
   AlertCircle,
   Ban,
+  Bike,
 } from 'lucide-react';
 import { OrderStatus } from '@/types';
+import DeliveryStatusTracker from '@/components/DeliveryStatusTracker';
 
 export default function OrdersPage() {
   const { pastOrders, cancelOrder, showToast } = useApp();

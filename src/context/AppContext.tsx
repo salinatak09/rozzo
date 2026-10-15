@@ -11,6 +11,8 @@ import {
   OrderStatus,
   CustomerNotification,
   DayMenuSchedule,
+  DeliveryMode,
+  RiderInfo,
 } from '../types';
 import {
   LOCATIONS,
@@ -19,6 +21,7 @@ import {
   INITIAL_USER_PLANS,
   INITIAL_PAST_ORDERS,
   INITIAL_NOTIFICATIONS,
+  MOCK_RIDERS,
 } from '../data/mockData';
 
 interface LocationItem {
@@ -62,6 +65,21 @@ interface AppContextType {
   updateWeeklyDayMenu: (providerId: string, day: string, lunch: DayMenuSchedule['lunch'], dinner: DayMenuSchedule['dinner']) => void;
   updateProviderSettings: (providerId: string, settings: Partial<TiffinProvider>) => void;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void;
+  // Delivery Management (Phase 4)
+  riders: Record<string, RiderInfo>;
+  assignRiderToOrder: (orderId: string, riderId: string) => { success: boolean; error?: string };
+  updateDeliveryStatus: (
+    orderId: string,
+    status: OrderStatus,
+    options?: {
+      failedReason?: string;
+      cancellationReason?: string;
+      riderId?: string;
+      estimatedMinutes?: number;
+      estimatedWindow?: string;
+    }
+  ) => { success: boolean; error?: string };
+  toggleProviderDeliveryMode: (providerId: string, mode: DeliveryMode) => void;
   // Customer action & validations
   cancelOrder: (orderId: string, reason?: string) => { success: boolean; error?: string };
   skipMeal: (planId: string, mealType: 'Lunch' | 'Dinner') => { success: boolean; error?: string };
@@ -108,6 +126,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [addresses, setAddresses] = useState<Address[]>(INITIAL_ADDRESSES);
   const [pastOrders, setPastOrders] = useState<PastOrder[]>(INITIAL_PAST_ORDERS);
   const [notifications, setNotifications] = useState<CustomerNotification[]>(INITIAL_NOTIFICATIONS);
+  const [riders, setRiders] = useState<Record<string, RiderInfo>>(MOCK_RIDERS);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Active Provider for Partner Dashboard
@@ -228,6 +247,159 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         orderId: affectedOrder.id,
       });
     }
+  };
+
+  // Phase 4: Delivery Management & Status Transitions
+  const VALID_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+    Scheduled: ['Confirmed', 'Cancelled'],
+    Confirmed: ['Accepted', 'Preparing', 'Cancelled'],
+    Accepted: ['Preparing', 'Ready', 'Cancelled'],
+    Preparing: ['Ready', 'Cancelled'],
+    Ready: ['Assigned', 'Picked Up', 'Out for Delivery', 'Cancelled'],
+    Assigned: ['Picked Up', 'Out for Delivery', 'Failed', 'Cancelled'],
+    'Picked Up': ['Out for Delivery', 'Delivered', 'Failed'],
+    'Out for Delivery': ['Delivered', 'Failed'],
+    Delivered: [],
+    Failed: ['Ready', 'Assigned', 'Picked Up', 'Out for Delivery', 'Cancelled'],
+    Cancelled: [],
+  };
+
+  const toggleProviderDeliveryMode = (providerId: string, mode: DeliveryMode) => {
+    setProviders((prev) =>
+      prev.map((p) => (p.id === providerId ? { ...p, deliveryMode: mode } : p))
+    );
+    showToast(`🚚 Delivery fleet switched to ${mode === 'platform-managed' ? 'Rozzo Green Fleet' : 'Kitchen Express Runner'}`);
+  };
+
+  const assignRiderToOrder = (orderId: string, riderId: string) => {
+    const rider = riders[riderId];
+    if (!rider) return { success: false, error: 'Rider not found.' };
+
+    let updatedOrder: PastOrder | undefined;
+
+    setPastOrders((prev) =>
+      prev.map((o) => {
+        if (o.id === orderId) {
+          const nextStatus: OrderStatus =
+            o.status === 'Ready' || o.status === 'Scheduled' || o.status === 'Confirmed' || o.status === 'Accepted' || o.status === 'Preparing'
+              ? 'Assigned'
+              : o.status;
+          updatedOrder = {
+            ...o,
+            rider,
+            status: nextStatus,
+            estimatedDeliveryWindow: o.estimatedDeliveryWindow || (o.mealType === 'Lunch' ? '12:45 PM – 01:15 PM' : '08:00 PM – 08:30 PM'),
+            estimatedMinutesAway: o.estimatedMinutesAway || 25,
+          };
+          return updatedOrder;
+        }
+        return o;
+      })
+    );
+
+    if (updatedOrder) {
+      showToast(`🛵 Assigned rider ${rider.name} to order #${orderId}`);
+      addNotification({
+        title: 'Delivery Partner Assigned 🛵',
+        message: `${rider.name} (${rider.vehicleNumber}, ${rider.vehicleType}) has been assigned to deliver your ${updatedOrder.mealType} meal #${orderId}.`,
+        type: 'delivery_update',
+        orderId,
+      });
+      return { success: true };
+    }
+    return { success: false, error: 'Order not found.' };
+  };
+
+  const updateDeliveryStatus = (
+    orderId: string,
+    newStatus: OrderStatus,
+    options?: {
+      failedReason?: string;
+      cancellationReason?: string;
+      riderId?: string;
+      estimatedMinutes?: number;
+      estimatedWindow?: string;
+    }
+  ) => {
+    const order = pastOrders.find((o) => o.id === orderId);
+    if (!order) return { success: false, error: 'Order not found.' };
+
+    // Validate transition
+    const allowed = VALID_STATUS_TRANSITIONS[order.status] || [];
+    if (!allowed.includes(newStatus)) {
+      const errMsg = `Cannot change order status from "${order.status}" directly to "${newStatus}".`;
+      showToast(`⚠️ ${errMsg}`);
+      return { success: false, error: errMsg };
+    }
+
+    const assignedRider = options?.riderId ? riders[options.riderId] : order.rider || riders['rider-1'];
+
+    setPastOrders((prev) =>
+      prev.map((o) => {
+        if (o.id === orderId) {
+          const updated: PastOrder = {
+            ...o,
+            status: newStatus,
+            rider: assignedRider,
+            failedReason: newStatus === 'Failed' ? options?.failedReason || 'Delivery issue encountered' : undefined,
+            cancellationReason: newStatus === 'Cancelled' ? options?.cancellationReason || 'Cancelled by provider/customer' : o.cancellationReason,
+            estimatedMinutesAway: newStatus === 'Delivered' ? 0 : (options?.estimatedMinutes ?? o.estimatedMinutesAway ?? 15),
+            estimatedDeliveryWindow: options?.estimatedWindow ?? o.estimatedDeliveryWindow ?? (o.mealType === 'Lunch' ? '12:45 PM – 01:15 PM' : '08:00 PM – 08:30 PM'),
+          };
+          return updated;
+        }
+        return o;
+      })
+    );
+
+    // Notifications
+    if (newStatus === 'Picked Up') {
+      showToast(`📦 Order #${orderId} picked up by ${assignedRider?.name || 'runner'}`);
+      addNotification({
+        title: 'Hot Dabba Picked Up from Kitchen',
+        message: `${assignedRider?.name || 'Your rider'} picked up your freshly packed tiffin from ${order.providerName} and is preparing to head out.`,
+        type: 'delivery_update',
+        orderId,
+      });
+    } else if (newStatus === 'Out for Delivery') {
+      const eta = options?.estimatedMinutes ? `in ~${options.estimatedMinutes} mins` : 'shortly';
+      showToast(`🛵 Order #${orderId} is Out for Delivery (${eta})`);
+      addNotification({
+        title: 'Out for Delivery! 🛵',
+        message: `${assignedRider?.name || 'Rider'} is heading to ${order.addressSnapshot}. Estimated arrival ${eta} (${options?.estimatedWindow || order.estimatedDeliveryWindow || '12:45 PM - 1:05 PM'}).`,
+        type: 'delivery_update',
+        orderId,
+      });
+    } else if (newStatus === 'Delivered') {
+      showToast(`✅ Order #${orderId} marked Delivered!`);
+      addNotification({
+        title: 'Meal Delivered! Enjoy your food 🍲',
+        message: `Your ${order.mealType} meal from ${order.providerName} has been delivered at ${order.addressSnapshot}.`,
+        type: 'delivery_update',
+        orderId,
+      });
+    } else if (newStatus === 'Failed') {
+      const reason = options?.failedReason || 'Customer unreachable / gate drop restricted';
+      showToast(`⚠️ Delivery Failed for #${orderId}`);
+      addNotification({
+        title: 'Delivery Attempt Failed ⚠️',
+        message: `Order #${orderId} could not be completed: ${reason}. A 100% meal rollover credit has been added to your subscription.`,
+        type: 'delivery_failed',
+        orderId,
+      });
+    } else if (newStatus === 'Assigned') {
+      showToast(`🛵 Assigned ${assignedRider?.name} to #${orderId}`);
+      addNotification({
+        title: 'Delivery Partner Assigned',
+        message: `${assignedRider?.name} (${assignedRider?.vehicleType}) assigned for your ${order.mealType} delivery.`,
+        type: 'delivery_update',
+        orderId,
+      });
+    } else {
+      showToast(`Order #${orderId} status updated to ${newStatus}`);
+    }
+
+    return { success: true };
   };
 
   // Customer Cancellation with Cutoff Validation
@@ -552,6 +724,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateWeeklyDayMenu,
         updateProviderSettings,
         updateOrderStatus,
+        riders,
+        assignRiderToOrder,
+        updateDeliveryStatus,
+        toggleProviderDeliveryMode,
         cancelOrder,
         skipMeal,
         validateAndSwitchAddress,

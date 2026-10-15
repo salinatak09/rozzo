@@ -7,9 +7,24 @@ export type OrderStatus =
   | 'Accepted'
   | 'Preparing'
   | 'Ready'
+  | 'Assigned'
+  | 'Picked Up'
   | 'Out for Delivery'
   | 'Delivered'
+  | 'Failed'
   | 'Cancelled';
+
+export type DeliveryMode = 'platform-managed' | 'provider-managed';
+
+export interface RiderInfo {
+  id: string;
+  name: string;
+  phone: string;
+  vehicleType: string;
+  vehicleNumber: string;
+  photoUrl?: string;
+  rating?: number;
+}
 
 export interface Address {
   id: string;
@@ -91,13 +106,15 @@ export interface TiffinProvider {
   coverUrl: string;
   description: string;
   packagingNote: string;
-  // Phase 3 Capacity, Cutoff & Service Areas
+  // Capacity, Cutoffs & Service Areas
   serviceableAreas: string[];
   maxDailyCapacity: number;
   currentBookedCount: number;
   lunchCutoffTime: string; // e.g. "10:30 AM"
   dinnerCutoffTime: string; // e.g. "05:30 PM"
   cancellationCutoffHours: number; // e.g. 2
+  // Phase 4 Delivery Mode
+  deliveryMode: DeliveryMode;
 }
 
 export interface UserPlan {
@@ -141,9 +158,17 @@ export interface PastOrder {
   addressSnapshot: string;
   addressType?: Address['type'];
   addressArea?: string;
+  deliveryInstructions?: string;
+  deliveryMode: DeliveryMode;
+  rider?: RiderInfo;
+  estimatedDeliveryWindow?: string;
+  estimatedMinutesAway?: number;
+  mapQueryUrl?: string;
   price: number;
   cancellationCutoff?: string;
   isCutoffPassed?: boolean;
+  failedReason?: string;
+  cancellationReason?: string;
 }
 
 export interface CustomerNotification {
@@ -151,7 +176,7 @@ export interface CustomerNotification {
   title: string;
   message: string;
   timestamp: string;
-  type: 'order_status' | 'address_change' | 'meal_skipped' | 'meal_cancelled' | 'system';
+  type: 'order_status' | 'address_change' | 'meal_skipped' | 'meal_cancelled' | 'delivery_update' | 'delivery_failed' | 'system';
   read: boolean;
   orderId?: string;
 }
