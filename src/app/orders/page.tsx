@@ -26,6 +26,7 @@ export default function OrdersPage() {
   const [ratedOrders, setRatedOrders] = useState<Record<string, number>>({});
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('Change of plans / eating outside');
+  const [selectedTab, setSelectedTab] = useState<'All' | 'Active' | 'Delivered' | 'Failed'>('All');
 
   const handleRate = (orderId: string, rating: number) => {
     setRatedOrders((prev) => ({ ...prev, [orderId]: rating }));
@@ -39,6 +40,27 @@ export default function OrdersPage() {
     }
   };
 
+  const filteredOrders = pastOrders.filter((order) => {
+    if (selectedTab === 'Active') {
+      return (
+        order.status === 'Preparing' ||
+        order.status === 'Ready' ||
+        order.status === 'Assigned' ||
+        order.status === 'Picked Up' ||
+        order.status === 'Out for Delivery' ||
+        order.status === 'Confirmed' ||
+        order.status === 'Accepted'
+      );
+    }
+    if (selectedTab === 'Delivered') {
+      return order.status === 'Delivered';
+    }
+    if (selectedTab === 'Failed') {
+      return order.status === 'Failed' || order.status === 'Cancelled';
+    }
+    return true;
+  });
+
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
       case 'Scheduled':
@@ -51,10 +73,16 @@ export default function OrdersPage() {
         return 'bg-purple-50 text-purple-800 border-purple-200 animate-pulse';
       case 'Ready':
         return 'bg-emerald-50 text-emerald-800 border-emerald-300';
+      case 'Assigned':
+        return 'bg-cyan-50 text-cyan-800 border-cyan-200';
+      case 'Picked Up':
+        return 'bg-amber-50 text-amber-800 border-amber-300';
       case 'Out for Delivery':
         return 'bg-teal-50 text-teal-800 border-teal-300 animate-pulse';
       case 'Delivered':
         return 'bg-brand-50 text-brand-800 border-brand-200';
+      case 'Failed':
+        return 'bg-rose-50 text-rose-800 border-rose-200';
       case 'Cancelled':
         return 'bg-rose-50 text-rose-800 border-rose-200';
       default:
@@ -80,18 +108,64 @@ export default function OrdersPage() {
           </p>
         </div>
 
-        <Link
-          href="/"
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs sm:text-sm shadow-sm transition-all"
-        >
-          <span>Order Next Meal</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Link
+            href="/delivery"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-cream-100 hover:bg-cream-200 text-stone-700 font-bold text-xs border border-[#E3D7C1] transition-all"
+            title="View Delivery Operations Hub"
+          >
+            <Bike className="w-3.5 h-3.5 text-brand-700" />
+            <span>Delivery Hub</span>
+          </Link>
+
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs sm:text-sm shadow-sm transition-all"
+          >
+            <span>Order Next Meal</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+        {(
+          [
+            { id: 'All', label: `All Orders (${pastOrders.length})` },
+            {
+              id: 'Active',
+              label: `In-Flight & Prep (${
+                pastOrders.filter((o) => o.status !== 'Delivered' && o.status !== 'Cancelled' && o.status !== 'Failed').length
+              })`,
+            },
+            {
+              id: 'Delivered',
+              label: `Delivered (${pastOrders.filter((o) => o.status === 'Delivered').length})`,
+            },
+            {
+              id: 'Failed',
+              label: `Issues & Cancelled (${pastOrders.filter((o) => o.status === 'Failed' || o.status === 'Cancelled').length})`,
+            },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setSelectedTab(tab.id)}
+            className={`px-3.5 py-1.5 rounded-full font-bold transition-all whitespace-nowrap ${
+              selectedTab === tab.id
+                ? 'bg-brand-700 text-white shadow-xs'
+                : 'bg-white hover:bg-cream-100 text-stone-600 border border-[#E3D7C1]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Orders List */}
       <div className="space-y-4">
-        {pastOrders.map((order) => {
+        {filteredOrders.map((order) => {
           const rating = ratedOrders[order.id];
           const canCancel =
             (order.status === 'Scheduled' || order.status === 'Confirmed') && !order.isCutoffPassed;
@@ -155,6 +229,9 @@ export default function OrdersPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Phase 4 Live Delivery Status Tracker */}
+              <DeliveryStatusTracker order={order} />
 
               {/* Delivery Address & Status Notes */}
               <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border-t border-[#EFE8DA]">

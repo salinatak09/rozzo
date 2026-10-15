@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
-import { OrderStatus, DayMenuSchedule } from '@/types';
+import { OrderStatus, DayMenuSchedule, DeliveryMode } from '@/types';
 import {
   ChefHat,
   Package,
@@ -24,6 +24,7 @@ import {
   DollarSign,
   ShieldCheck,
   ChevronRight,
+  Bike,
 } from 'lucide-react';
 
 const ORDER_STATUS_ORDER: OrderStatus[] = [
@@ -32,8 +33,12 @@ const ORDER_STATUS_ORDER: OrderStatus[] = [
   'Accepted',
   'Preparing',
   'Ready',
+  'Assigned',
+  'Picked Up',
   'Out for Delivery',
   'Delivered',
+  'Failed',
+  'Cancelled',
 ];
 
 export default function PartnerDashboardPage() {
@@ -91,6 +96,7 @@ export default function PartnerDashboardPage() {
   const [lunchCutoffInput, setLunchCutoffInput] = useState(currentProvider.lunchCutoffTime);
   const [dinnerCutoffInput, setDinnerCutoffInput] = useState(currentProvider.dinnerCutoffTime);
   const [serviceAreasInput, setServiceAreasInput] = useState<string[]>([...currentProvider.serviceableAreas]);
+  const [deliveryModeInput, setDeliveryModeInput] = useState<DeliveryMode>(currentProvider.deliveryMode || 'platform-managed');
 
   // Sync state when active provider changes
   const handleProviderChange = (id: string) => {
@@ -105,6 +111,7 @@ export default function PartnerDashboardPage() {
     setLunchCutoffInput(p.lunchCutoffTime);
     setDinnerCutoffInput(p.dinnerCutoffTime);
     setServiceAreasInput([...p.serviceableAreas]);
+    setDeliveryModeInput(p.deliveryMode || 'platform-managed');
   };
 
   // Sync weekly form fields when day changes
@@ -180,6 +187,7 @@ export default function PartnerDashboardPage() {
       lunchCutoffTime: lunchCutoffInput,
       dinnerCutoffTime: dinnerCutoffInput,
       serviceableAreas: serviceAreasInput,
+      deliveryMode: deliveryModeInput,
     });
   };
 
@@ -232,22 +240,33 @@ export default function PartnerDashboardPage() {
           </div>
         </div>
 
-        {/* Switch kitchen partner */}
-        <div className="bg-stone-800/80 p-3 rounded-2xl border border-stone-700/80 space-y-1">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-            Select Active Home Kitchen:
-          </label>
-          <select
-            value={currentProvider.id}
-            onChange={(e) => handleProviderChange(e.target.value)}
-            className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+        {/* Actions & Switch kitchen partner */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <Link
+            href="/delivery"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all"
+            title="Open Runner Dispatch and Delivery Hub"
           >
-            {providers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.locationArea})
-              </option>
-            ))}
-          </select>
+            <Bike className="w-4 h-4" />
+            <span>Fleet & Runner Hub</span>
+          </Link>
+
+          <div className="bg-stone-800/80 p-3 rounded-2xl border border-stone-700/80 space-y-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+              Select Active Home Kitchen:
+            </label>
+            <select
+              value={currentProvider.id}
+              onChange={(e) => handleProviderChange(e.target.value)}
+              className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+            >
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.locationArea})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -932,6 +951,65 @@ export default function PartnerDashboardPage() {
                     Customer cannot cancel or skip dinner after this time.
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Delivery Management Mode (Phase 4) */}
+            <div className="p-4 bg-cream-50 rounded-2xl border border-[#EFE8DA] space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-700 block">
+                  Delivery Fleet Operations Mode
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-800">
+                  Phase 4 Feature
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryModeInput('platform-managed')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    deliveryModeInput === 'platform-managed'
+                      ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20'
+                      : 'bg-white border-[#E3D7C1] hover:bg-cream-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-extrabold text-xs text-stone-900 flex items-center gap-1.5">
+                      <Bike className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Rozzo Green Fleet</span>
+                    </span>
+                    {deliveryModeInput === 'platform-managed' && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-stone-500 leading-relaxed">
+                    Platform-managed electric 2-wheelers with automated dispatch, live tracking & OTP drops.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeliveryModeInput('provider-managed')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    deliveryModeInput === 'provider-managed'
+                      ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-500/20'
+                      : 'bg-white border-[#E3D7C1] hover:bg-cream-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-extrabold text-xs text-stone-900 flex items-center gap-1.5">
+                      <ChefHat className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Kitchen Express Runner</span>
+                    </span>
+                    {deliveryModeInput === 'provider-managed' && (
+                      <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-stone-500 leading-relaxed">
+                    Kitchen’s dedicated delivery boy handling hyper-local PG drops and neighborhood orders.
+                  </p>
+                </button>
               </div>
             </div>
 

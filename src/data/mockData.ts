@@ -524,6 +524,7 @@ export const MOCK_PROVIDERS: TiffinProvider[] = [
   },
   {
     id: 'dadis-kitchen',
+    deliveryMode: 'platform-managed',
     serviceableAreas: ["Indiranagar, 12th Main","Koramangala, 5th Block","Whitefield, ITPL Main Rd"],
     maxDailyCapacity: 80,
     currentBookedCount: 68,
@@ -751,6 +752,7 @@ export const MOCK_PROVIDERS: TiffinProvider[] = [
   },
   {
     id: 'dakshin-daily',
+    deliveryMode: 'provider-managed',
     serviceableAreas: ["BTM Layout, 2nd Stage","HSR Layout, Sector 3","Koramangala, 5th Block"],
     maxDailyCapacity: 65,
     currentBookedCount: 38,
@@ -978,6 +980,7 @@ export const MOCK_PROVIDERS: TiffinProvider[] = [
   },
   {
     id: 'fitbite-tiffins',
+    deliveryMode: 'platform-managed',
     serviceableAreas: ["Whitefield, ITPL Main Rd","Bellandur & Green Glen","Indiranagar, 12th Main"],
     maxDailyCapacity: 50,
     currentBookedCount: 41,
@@ -1206,6 +1209,7 @@ export const MOCK_PROVIDERS: TiffinProvider[] = [
   },
   {
     id: 'bengali-rasoi',
+    deliveryMode: 'provider-managed',
     serviceableAreas: ["Bellandur & Green Glen","HSR Layout, Sector 3","Koramangala, 5th Block"],
     maxDailyCapacity: 55,
     currentBookedCount: 36,
@@ -1691,6 +1695,7 @@ export const INITIAL_NOTIFICATIONS: CustomerNotification[] = [
     message: 'Ramesh Kumar (Rozzo Green Fleet, KA-05-EB-4192) is out for delivery. Arriving at Prestige Tech Park Desk 42 in ~12 mins (12:45 PM – 01:05 PM).',
     timestamp: '12:35 PM Today',
     type: 'delivery_update',
+    read: false,
     orderId: 'ORD-8925',
   },
   {
@@ -1699,6 +1704,7 @@ export const INITIAL_NOTIFICATIONS: CustomerNotification[] = [
     message: 'Maa Ki Rasoi has handed your freshly packed tiffin to rider Ramesh Kumar for dispatch.',
     timestamp: '12:20 PM Today',
     type: 'delivery_update',
+    read: false,
     orderId: 'ORD-8925',
   },
   {
@@ -1707,6 +1713,7 @@ export const INITIAL_NOTIFICATIONS: CustomerNotification[] = [
     message: 'Order #ORD-8920 could not be handed over because customer was unreachable and security gate refused drop. A 100% meal rollover credit has been credited to your account.',
     timestamp: '11:45 AM Today',
     type: 'delivery_failed',
+    read: false,
     orderId: 'ORD-8920',
   },
   {
@@ -1715,5 +1722,6 @@ export const INITIAL_NOTIFICATIONS: CustomerNotification[] = [
     message: 'Delivery destination successfully updated to Prestige Tech Park - Desk 42 before the 10:30 AM cutoff.',
     timestamp: '09:40 AM Today',
     type: 'address_change',
+    read: true,
   },
 ];

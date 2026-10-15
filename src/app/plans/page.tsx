@@ -20,6 +20,7 @@ import {
   Calendar,
   FastForward,
   AlertTriangle,
+  Bike,
 } from 'lucide-react';
 
 export default function PlansPage() {
@@ -27,6 +28,7 @@ export default function PlansPage() {
     userPlans,
     addresses,
     providers,
+    pastOrders,
     togglePausePlan,
     validateAndSwitchAddress,
     skipMeal,
@@ -87,6 +89,16 @@ export default function PlansPage() {
               addresses.find((a) => a.id === (plan.lunchAddressId || plan.addressId)) || addresses[0];
             const dinnerAddress =
               addresses.find((a) => a.id === (plan.dinnerAddressId || plan.addressId)) || addresses[0];
+
+            const activeOrder = pastOrders.find(
+              (o) =>
+                o.providerId === plan.providerId &&
+                (o.status === 'Preparing' ||
+                  o.status === 'Ready' ||
+                  o.status === 'Assigned' ||
+                  o.status === 'Picked Up' ||
+                  o.status === 'Out for Delivery')
+            );
 
             return (
               <div
@@ -170,6 +182,38 @@ export default function PlansPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Active In-Flight Delivery Banner */}
+                  {activeOrder && (
+                    <div className="p-3.5 rounded-2xl bg-brand-50 border border-brand-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs shadow-xs">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center flex-shrink-0 animate-pulse">
+                          <Bike className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5 font-extrabold text-brand-900">
+                            <span>Today's {activeOrder.mealType} is {activeOrder.status}!</span>
+                            {activeOrder.estimatedMinutesAway !== undefined && activeOrder.estimatedMinutesAway > 0 && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-brand-200 text-brand-800">
+                                ~{activeOrder.estimatedMinutesAway} mins away
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-brand-700 text-[11px] block">
+                            Delivering to: {activeOrder.addressSnapshot}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Link
+                        href="/orders"
+                        className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-bold text-xs shadow-xs transition-colors self-start sm:self-auto"
+                      >
+                        <span>Track Live Run</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  )}
 
                   {/* Meal Progress Bar */}
                   <div className="space-y-1.5">

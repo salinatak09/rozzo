@@ -231,8 +231,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPastOrders((prev) =>
       prev.map((o) => {
         if (o.id === orderId) {
-          affectedOrder = o;
-          return { ...o, status: newStatus };
+          const rider =
+            o.rider ||
+            (newStatus === 'Assigned' || newStatus === 'Picked Up' || newStatus === 'Out for Delivery'
+              ? riders['rider-1']
+              : undefined);
+          affectedOrder = {
+            ...o,
+            status: newStatus,
+            rider,
+            estimatedDeliveryWindow:
+              o.estimatedDeliveryWindow ||
+              (o.mealType === 'Lunch' ? '12:45 PM – 01:15 PM' : '08:00 PM – 08:30 PM'),
+            estimatedMinutesAway: newStatus === 'Delivered' ? 0 : (o.estimatedMinutesAway ?? 15),
+          };
+          return affectedOrder;
         }
         return o;
       })
@@ -624,6 +637,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addressSnapshot: `${targetAddrObj.buildingName}, ${targetAddrObj.area}`,
       addressType: targetAddrObj.type,
       addressArea: targetAddrObj.area,
+      deliveryInstructions: targetAddrObj.deliveryInstructions,
+      deliveryMode: provider.deliveryMode || 'platform-managed',
+      mapQueryUrl: `https://maps.google.com/?q=${encodeURIComponent(targetAddrObj.buildingName + ' ' + targetAddrObj.area)}`,
       price: planDetail.pricePerMeal,
       cancellationCutoff: mealSlot === 'dinner' ? provider.dinnerCutoffTime : provider.lunchCutoffTime,
       isCutoffPassed: false,

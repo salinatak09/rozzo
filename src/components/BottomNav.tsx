@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CalendarHeart, ShoppingBag, User, ChefHat } from 'lucide-react';
+import { Home, CalendarHeart, ShoppingBag, User, ChefHat, Bike } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function BottomNav() {
@@ -14,13 +14,14 @@ export default function BottomNav() {
   const navItems = [
     { label: 'Explore', href: '/', icon: Home },
     {
-      label: 'My Plans',
+      label: 'Plans',
       href: '/plans',
       icon: CalendarHeart,
       badge: activePlansCount > 0 ? activePlansCount : undefined,
     },
     { label: 'Orders', href: '/orders', icon: ShoppingBag },
     { label: 'Partner', href: '/partner', icon: ChefHat },
+    { label: 'Fleet', href: '/delivery', icon: Bike },
     { label: 'Profile', href: '/profile', icon: User },
   ];
 

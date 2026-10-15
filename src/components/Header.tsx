@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   X,
   ExternalLink,
+  Bike,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -240,7 +241,22 @@ export default function Header() {
             >
               <ChefHat className="w-3.5 h-3.5 text-amber-800" />
               <span className="hidden sm:inline">Provider Dashboard</span>
-              <span className="sm:hidden">Partner</span>
+              <span className="sm:hidden">Kitchen</span>
+            </Link>
+
+            {/* Delivery Fleet Button */}
+            <Link
+              href="/delivery"
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all border shadow-sm ${
+                pathname === '/delivery'
+                  ? 'bg-stone-900 text-white border-stone-900'
+                  : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300'
+              }`}
+              title="Delivery Fleet Operations Hub"
+            >
+              <Bike className="w-3.5 h-3.5 text-emerald-800" />
+              <span className="hidden sm:inline">Delivery Fleet</span>
+              <span className="sm:hidden">Fleet</span>
             </Link>
           </div>
         </div>
